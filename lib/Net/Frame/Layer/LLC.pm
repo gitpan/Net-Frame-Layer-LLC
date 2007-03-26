@@ -1,11 +1,11 @@
 #
-# $Id: LLC.pm,v 1.1 2007/01/03 21:51:25 gomor Exp $
+# $Id: LLC.pm,v 1.2 2007/03/22 22:43:46 gomor Exp $
 #
 package Net::Frame::Layer::LLC;
 use strict;
 use warnings;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 use Net::Frame::Layer qw(:consts);
 require Exporter;
@@ -14,23 +14,40 @@ our @ISA = qw(Net::Frame::Layer Exporter);
 our %EXPORT_TAGS = (
    consts => [qw(
       NF_LLC_HDR_LEN
-      NF_LLC_OUI_CISCO
-      NF_LLC_PID_CDP
-      NF_LLC_PID_STP
+      NF_LLC_DSAP_STP
+      NF_LLC_SSAP_STP
       NF_LLC_DSAP_SNAP
       NF_LLC_SSAP_SNAP
+      NF_LLC_DSAP_IPX
+      NF_LLC_SSAP_IPX
+      NF_LLC_DSAP_HPEXTLLC
+      NF_LLC_SSAP_HPEXTLLC
+      NF_LLC_SNAP_HDR_LEN
+      NF_LLC_SNAP_OUI_CISCO
+      NF_LLC_SNAP_PID_CDP
+      NF_LLC_SNAP_PID_STP
+      NF_LLC_SNAP_PID_IPX
    )],
 );
 our @EXPORT_OK = (
    @{$EXPORT_TAGS{consts}},
 );
 
-use constant NF_LLC_HDR_LEN   => 8;
-use constant NF_LLC_OUI_CISCO => 0x00000c;
-use constant NF_LLC_PID_CDP   => 0x2000;
-use constant NF_LLC_PID_STP   => 0x010b;
-use constant NF_LLC_DSAP_SNAP => 0x2a;
-use constant NF_LLC_SSAP_SNAP => NF_LLC_DSAP_SNAP();
+use constant NF_LLC_HDR_LEN   => 3;
+use constant NF_LLC_DSAP_STP  => 0x21;
+use constant NF_LLC_SSAP_STP  => 0x21;
+use constant NF_LLC_DSAP_SNAP => 0x55;
+use constant NF_LLC_SSAP_SNAP => 0x55;
+use constant NF_LLC_DSAP_IPX => 0x70;
+use constant NF_LLC_SSAP_IPX => 0x70;
+use constant NF_LLC_DSAP_HPEXTLLC => 0x7c;
+use constant NF_LLC_SSAP_HPEXTLLC => 0x7c;
+
+use constant NF_LLC_SNAP_HDR_LEN   => 5;
+use constant NF_LLC_SNAP_OUI_CISCO => 0x00000c;
+use constant NF_LLC_SNAP_PID_CDP   => 0x2000;
+use constant NF_LLC_SNAP_PID_STP   => 0x010b;
+use constant NF_LLC_SNAP_PID_IPX   => 0x8137;
 
 our @AS = qw(
    dsap
@@ -38,8 +55,6 @@ our @AS = qw(
    ssap
    cr
    control
-   oui
-   pid
 );
 __PACKAGE__->cgBuildIndices;
 __PACKAGE__->cgBuildAccessorsScalar(\@AS);
@@ -55,8 +70,6 @@ sub new {
       ssap    => NF_LLC_SSAP_SNAP,
       cr      => 1,
       control => 0x03,
-      oui     => NF_LLC_OUI_CISCO,
-      pid     => NF_LLC_PID_CDP,
       @_,
    );
 }
@@ -72,13 +85,9 @@ sub pack {
    my $cr   = Bit::Vector->new_Dec(1, $self->[$__cr]);
    my $v16  = $dsap->Concat_List($ig, $ssap, $cr);
 
-   my $oui = Bit::Vector->new_Dec(24, $self->[$__oui]);
-
-   $self->[$__raw] = $self->SUPER::pack('nCB24n',
+   $self->[$__raw] = $self->SUPER::pack('nC',
       $v16->to_Dec,
       $self->[$__control],
-      $oui->to_Bin,
-      $self->[$__pid],
    ) or return undef;
 
    $self->[$__raw];
@@ -87,22 +96,18 @@ sub pack {
 sub unpack {
    my $self = shift;
 
-   my ($dsapIgSsapCr, $control, $oui, $pid, $payload) =
-      $self->SUPER::unpack('nCB24n a*', $self->[$__raw])
+   my ($dsapIgSsapCr, $control, $payload) =
+      $self->SUPER::unpack('nC a*', $self->[$__raw])
          or return undef;
 
    my $v16 = Bit::Vector->new_Dec(16, $dsapIgSsapCr);
-   $self->[$__dsap] = $v16->Chunk_Read(7, 0);
-   $self->[$__ig]   = $v16->Chunk_Read(1, 7);
-   $self->[$__ssap] = $v16->Chunk_Read(7, 8);
-   $self->[$__cr]   = $v16->Chunk_Read(1, 15);
+   $self->[$__dsap] = $v16->Chunk_Read(7, 9);
+   $self->[$__ig]   = $v16->Chunk_Read(1, 8);
+   $self->[$__ssap] = $v16->Chunk_Read(7, 1);
+   $self->[$__cr]   = $v16->Chunk_Read(1, 0);
 
    $self->[$__control] = $control;
 
-   my $v24 = Bit::Vector->new_Bin(24, $oui);
-   $self->[$__oui] = $v24->to_Dec;
-
-   $self->[$__pid]     = $pid;
    $self->[$__payload] = $payload;
 
    $self;
@@ -114,21 +119,22 @@ sub encapsulate {
    return $self->[$__nextLayer] if $self->[$__nextLayer];
 
    my $types = {
-      NF_LLC_PID_CDP() => 'CDP',
-      NF_LLC_PID_STP() => 'STP',
+      NF_LLC_DSAP_STP()      => 'STP',
+      NF_LLC_DSAP_IPX()      => 'IPX',
+      NF_LLC_DSAP_SNAP()     => 'LLC::SNAP',
+      NF_LLC_DSAP_HPEXTLLC() => 'HPEXTLLC',
    };
 
-   $types->{$self->[$__pid]} || NF_LAYER_UNKNOWN;
+   $types->{$self->[$__dsap]} || NF_LAYER_UNKNOWN;
 }
 
 sub print {
    my $self = shift;
 
    my $l = $self->layer;
-   sprintf "$l: dsap:0x%02x  ig:%d  ssap:0x%02x  cr:%d  control:0x%02x\n".
-           "$l: oui:0x%06x  pid:0x%04x",
+   sprintf "$l: dsap:0x%02x  ig:%d  ssap:0x%02x  cr:%d  control:0x%02x",
       $self->[$__dsap], $self->[$__ig], $self->[$__ssap], $self->[$__cr],
-      $self->[$__control], $self->[$__oui], $self->[$__pid];
+      $self->[$__control];
 }
 
 1;
@@ -150,8 +156,6 @@ Net::Frame::Layer::LLC - Logical-Link Control layer object
       ssap    => NF_LLC_SSAP_SNAP,
       cr      => 1,
       control => 0x03,
-      oui     => NF_LLC_OUI_CISCO,
-      pid     => NF_LLC_PID_CDP,
    );
    $layer->pack;
 
@@ -183,10 +187,6 @@ See also B<Net::Frame::Layer> for other attributes and methods.
 =item B<cr> - 1 bit
 
 =item B<control> - 8 bits
-
-=item B<oui> - 24 bits
-
-=item B<pid> - 16 bits
 
 =back
 
@@ -250,21 +250,15 @@ Load them: use Net::Frame::Layer::LLC qw(:consts);
 
 LLC header length.
 
-=item B<NF_LLC_OUI_CISCO>
-
-Oui attribute constants.
-
-=item B<NF_LLC_PID_CDP>
-
-=item B<NF_LLC_PID_STP>
-
-Pid attribute constants.
-
 =item B<NF_LLC_DSAP_SNAP>
+
+=item B<NF_LLC_DSAP_STP>
 
 Dsap attribute constants.
 
 =item B<NF_LLC_SSAP_SNAP>
+
+=item B<NF_LLC_SSAP_STP>
 
 Ssap attribute constants.
 

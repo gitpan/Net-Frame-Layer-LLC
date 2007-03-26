@@ -1,6 +1,7 @@
 Changes
 examples/build-layer.pl
 lib/Net/Frame/Layer/LLC.pm
+lib/Net/Frame/Layer/LLC/SNAP.pm
 LICENSE
 LICENSE.Artistic
 Makefile.PL
@@ -10,4 +11,5 @@ README
 t/01-use.t
 t/02-pod-coverage.t
 t/03-test-pod.t
-t/04-layer-create.t
+t/04-layer-llc.t
+t/05-layer-llc-snap.t

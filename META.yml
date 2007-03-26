@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Net-Frame-Layer-LLC
-version:             1.00
+version:             1.01
 abstract:            Logical-Link Control layer object
 license:             Artistic
 generated_by:        ExtUtils::MakeMaker version 6.31
