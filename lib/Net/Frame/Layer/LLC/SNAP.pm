@@ -1,5 +1,5 @@
 #
-# $Id: SNAP.pm,v 1.2 2007/03/26 21:42:47 gomor Exp $
+# $Id: SNAP.pm 16 2010-06-03 12:46:53Z gomor $
 #
 package Net::Frame::Layer::LLC::SNAP;
 use strict;
@@ -188,7 +188,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2006-2007, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2006-2010, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.

@@ -1,11 +1,11 @@
 #
-# $Id: LLC.pm,v 1.2 2007/03/22 22:43:46 gomor Exp $
+# $Id: LLC.pm 16 2010-06-03 12:46:53Z gomor $
 #
 package Net::Frame::Layer::LLC;
 use strict;
 use warnings;
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 use Net::Frame::Layer qw(:consts);
 require Exporter;
@@ -274,7 +274,7 @@ Patrice E<lt>GomoRE<gt> Auffret
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2006-2007, Patrice E<lt>GomoRE<gt> Auffret
+Copyright (c) 2006-2010, Patrice E<lt>GomoRE<gt> Auffret
 
 You may distribute this module under the terms of the Artistic license.
 See LICENSE.Artistic file in the source distribution archive.
